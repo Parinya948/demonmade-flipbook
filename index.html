@@ -181,23 +181,6 @@ header {
 .ctrl:hover:not(:disabled) { background: rgba(201,169,110,.06); color: var(--gold-light); }
 .ctrl:disabled { opacity: .15; cursor: default; }
 
-/* ── Swipe hint arrows (แสดงตอน hover book) ── */
-#hint-prev, #hint-next {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  width: 36px; height: 36px;
-  display: flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(201,169,110,.2);
-  color: rgba(201,169,110,.35);
-  font-size: .9rem;
-  pointer-events: none;
-  opacity: 0; transition: opacity .3s;
-  background: rgba(13,13,15,.6);
-  backdrop-filter: blur(6px);
-}
-#hint-prev { left: 8px; }
-#hint-next { right: 8px; }
-#book-wrap:hover #hint-prev,
-#book-wrap:hover #hint-next { opacity: 1; }
 
 /* ── Zoom overlay ── */
 #zoom-wrap {
@@ -248,11 +231,9 @@ header {
 <!-- Viewer -->
 <div id="screen-viewer">
   <div id="book-wrap">
-    <div id="hint-prev">&#8592;</div>
     <div id="book-frame">
       <div id="flipbook"></div>
     </div>
-    <div id="hint-next">&#8594;</div>
   </div>
 
   <div id="controls">
@@ -451,12 +432,12 @@ function updateUI(page) {
     moved = false;
   }
 
-  // Touch
-  document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX),                          { passive: true });
-  document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX),                    { passive: true });
+  // Touch — capture phase เหมือน mouse เพื่อให้รับ event ก่อน turn.js
+  document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { capture: true, passive: true });
+  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX),                         { capture: true, passive: true });
+  document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX),                   { capture: true, passive: true });
 
-  // Mouse (capture phase)
+  // Mouse — capture phase
   document.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY), true);
   document.addEventListener('mousemove',  e => onMove(e.clientX),             true);
   document.addEventListener('mouseup',    e => onEnd(e.clientX),              true);
