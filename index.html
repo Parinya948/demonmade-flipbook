@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Demonmade Flipbook</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --gold:      #c9a96e;
+  --gold-light:#e8d5a3;
+  --dark:      #0d0d0f;
+  --surface:   #13131a;
+}
+
+body {
+  background: var(--dark);
+  color: rgba(232,213,163,0.85);
+  font-family: 'Cormorant Garamond', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* ambient glow */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(201,169,110,.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 20%   0%, rgba(201,169,110,.04) 0%, transparent 60%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: '';
+  position: fixed; top:0; left:0; right:0; height:1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  z-index: 1;
+}
+
+/* ── Header ── */
+header {
+  position: relative; z-index: 10;
+  width: 100%; padding: 14px 28px;
+  background: rgba(13,13,15,.85);
+  backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid rgba(201,169,110,.12);
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 1.1rem; font-weight: 600;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold);
+}
+.logo span { color: rgba(232,213,163,.45); font-weight: 300; }
+
+.hdr-upload {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .75rem; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(201,169,110,.5);
+  background: none; border: 1px solid rgba(201,169,110,.15);
+  padding: 6px 14px; cursor: pointer;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.hdr-upload:hover { color: var(--gold-light); border-color: rgba(201,169,110,.4); background: rgba(201,169,110,.05); }
+.hdr-upload svg { opacity: .7; }
+
+/* ── Upload screen ── */
+#screen-upload {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; flex: 1; width: 100%; padding: 40px 16px;
+}
+#drop-zone {
+  position: relative;
+  width: min(480px, 92vw);
+  border: 1px solid rgba(201,169,110,.2);
+  padding: 56px 32px; text-align: center; cursor: pointer;
+  background: rgba(201,169,110,.03);
+  transition: background .25s, border-color .25s;
+}
+/* ornament corners */
+#drop-zone::before, #drop-zone::after {
+  content: ''; position: absolute;
+  width: 16px; height: 16px;
+  border-color: rgba(201,169,110,.4); border-style: solid;
+}
+#drop-zone::before { top: 8px;  left: 8px;  border-width: 1px 0 0 1px; }
+#drop-zone::after  { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+#drop-zone:hover, #drop-zone.over {
+  background: rgba(201,169,110,.07); border-color: rgba(201,169,110,.5);
+}
+#drop-zone .icon { font-size: 2.8rem; margin-bottom: 16px; opacity: .6; }
+#drop-zone h2 {
+  font-size: 1.1rem; font-weight: 400;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 10px;
+}
+#drop-zone p { font-size: .8rem; opacity: .45; line-height: 2; font-weight: 300; }
+
+.btn-pick {
+  margin-top: 28px;
+  background: transparent;
+  color: var(--gold);
+  border: 1px solid rgba(201,169,110,.4);
+  padding: 10px 36px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .8rem; font-weight: 600;
+  letter-spacing: 3px; text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, color .2s;
+}
+.btn-pick:hover { background: rgba(201,169,110,.1); border-color: var(--gold); color: var(--gold-light); }
+#file-input { display:none; }
+
+/* ── Progress ── */
+#screen-progress {
+  position: relative; z-index: 2;
+  display: none; flex-direction: column; align-items: center;
+  justify-content: center; flex: 1; gap: 20px; padding: 24px;
+}
+#prog-label {
+  font-size: .7rem; letter-spacing: 3px; text-transform: uppercase;
+  color: rgba(201,169,110,.5); font-weight: 300;
+}
+#prog-track {
+  width: min(380px,85vw); height: 1px;
+  background: rgba(201,169,110,.12);
+}
+#prog-bar { height: 100%; width: 0%; background: var(--gold); transition: width .12s; }
+
+/* loader ring */
+.prog-ring { width: 44px; height: 44px; position: relative; }
+.prog-ring::before, .prog-ring::after {
+  content: ''; position: absolute; inset: 0;
+  border-radius: 50%; border: 1px solid transparent;
+}
+.prog-ring::before { border-top-color: var(--gold); animation: spin 1.2s linear infinite; }
+.prog-ring::after  { border-bottom-color: rgba(201,169,110,.2); animation: spin 1.2s linear infinite reverse; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Viewer ── */
+#screen-viewer {
+  position: relative; z-index: 2;
+  display: none; flex-direction: column; align-items: center;
+  width: 100%; flex: 1; padding-bottom: 40px;
+}
+
+/* book frame */
+#book-wrap {
+  perspective: 2600px;
+  margin: 28px auto 0;
+  display: flex; align-items: center; justify-content: center;
+}
+#book-frame {
+  padding: 14px;
+  background: linear-gradient(145deg, #1c1c24, #111118);
+  border: 1px solid rgba(201,169,110,.18);
+  position: relative;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.8),
+    0 12px 48px rgba(0,0,0,.9),
+    0 0 80px rgba(201,169,110,.04),
+    inset 0 1px 0 rgba(255,255,255,.03);
+}
+#book-frame::before, #book-frame::after {
+  content: ''; position: absolute;
+  width: 14px; height: 14px;
+  border-color: var(--gold); border-style: solid; opacity: .4;
+}
+#book-frame::before { top:6px; left:6px; border-width:1px 0 0 1px; }
+#book-frame::after  { bottom:6px; right:6px; border-width:0 1px 1px 0; }
+
+/* turn.js pages */
+#flipbook .page {
+  background: #fff; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+#flipbook .page canvas { width:100%; height:100%; display:block; }
+
+#flipbook .page .spin {
+  width:32px; height:32px; border:2px solid #eee;
+  border-top-color: var(--gold); border-radius:50%;
+  animation: spin .8s linear infinite;
+}
+
+.pnum {
+  position:absolute; bottom:7px; right:9px;
+  font-size:.65rem; opacity:.25; pointer-events:none; color:#000;
+  font-family: 'Cormorant Garamond', serif; letter-spacing:1px;
+}
+#flipbook .cover-page .pnum { display:none; }
+#flipbook .cover-page { box-shadow: 6px 0 28px rgba(0,0,0,.5); }
+
+#flipbook .hard {
+  background: linear-gradient(135deg,#0f0f14,#1a1520) !important;
+  color: rgba(201,169,110,.7);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.85rem; font-weight:400; letter-spacing:2px;
+  text-transform:uppercase; border:none !important;
+}
+#flipbook .hard.back-cover {
+  background: linear-gradient(135deg,#1a1520,#0f0f14) !important;
+}
+
+/* ── Controls ── */
+#controls {
+  display: flex; align-items: center; gap: 0;
+  margin-top: 24px;
+  border: 1px solid rgba(201,169,110,.15);
+  background: rgba(13,13,15,.8);
+  backdrop-filter: blur(10px);
+}
+.ctrl {
+  background: transparent;
+  border: none;
+  border-right: 1px solid rgba(201,169,110,.1);
+  color: rgba(201,169,110,.65);
+  padding: 11px 22px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .75rem; font-weight: 600;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+  display: flex; align-items: center; gap: 5px;
+}
+.ctrl:last-child { border-right: none; }
+.ctrl:hover:not(:disabled) { background: rgba(201,169,110,.07); color: var(--gold-light); }
+.ctrl:disabled { opacity: .2; cursor: default; }
+
+#pg-info {
+  padding: 11px 20px;
+  font-size: .72rem; letter-spacing: 2px;
+  color: rgba(201,169,110,.35); font-weight: 300;
+  min-width: 100px; text-align: center;
+  border-right: 1px solid rgba(201,169,110,.1);
+}
+
+/* ── Zoom overlay ── */
+#zoom-wrap {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.94); z-index:500;
+  align-items:center; justify-content:center;
+}
+#zoom-wrap.show { display:flex; }
+#zoom-canvas {
+  max-width:94vw; max-height:90vh;
+  box-shadow: 0 12px 60px rgba(0,0,0,.9);
+  border: 1px solid rgba(201,169,110,.1);
+}
+#zoom-x {
+  position:absolute; top:18px; right:22px;
+  background: transparent;
+  border: 1px solid rgba(201,169,110,.3);
+  width:36px; height:36px; color: var(--gold);
+  font-size:1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition: background .2s;
+}
+#zoom-x:hover { background: rgba(201,169,110,.1); }
+
+@media(max-width:600px){
+  .logo { font-size:.9rem; }
+  #controls { flex-wrap:wrap; }
+  .ctrl { padding:9px 14px; font-size:.7rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Demon<span>made</span></div>
+  <label class="hdr-upload">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    เปลี่ยน PDF
+    <input type="file" id="hdr-file" accept=".pdf" style="display:none">
+  </label>
+</header>
+
+<div id="screen-upload">
+  <div id="drop-zone">
+    <div class="icon">📜</div>
+    <h2>Open PDF</h2>
+    <p>ลาก &amp; วาง หรือคลิกเลือกไฟล์<br>
+       <small>ไฟล์จะถูกเปิดในเบราว์เซอร์เท่านั้น</small>
+    </p>
+    <button class="btn-pick" onclick="document.getElementById('file-input').click()">Select File</button>
+    <input type="file" id="file-input" accept=".pdf">
+  </div>
+</div>
+
+<div id="screen-progress">
+  <div class="prog-ring"></div>
+  <p id="prog-label">Loading</p>
+  <div id="prog-track"><div id="prog-bar"></div></div>
+</div>
+
+<div id="screen-viewer">
+  <div id="book-wrap">
+    <div id="book-frame">
+      <div id="flipbook"></div>
+    </div>
+  </div>
+  <div id="controls">
+    <button class="ctrl" id="btn-first" onclick="gotoPage(1)">⏮</button>
+    <button class="ctrl" id="btn-prev"  onclick="$('#flipbook').turn('previous')">&#8592;&nbsp;&nbsp;Prev</button>
+    <span id="pg-info">— / —</span>
+    <button class="ctrl" id="btn-next"  onclick="$('#flipbook').turn('next')">Next&nbsp;&nbsp;&#8594;</button>
+    <button class="ctrl" id="btn-last"  onclick="gotoPage(9999)">⏭</button>
+  </div>
+</div>
+
+<div id="zoom-wrap">
+  <button id="zoom-x" onclick="closeZoom()">✕</button>
+  <canvas id="zoom-canvas"></canvas>
+</div>
+
+<script src="jquery.js"></script>
+<script src="turn.js"></script>
+<script src="pdf.min.js"></script>
+<script>
+const WORKER_URL = 'pdf.worker.min.js';
+
+let pdfDoc=null, totalPages=0;
+let BOOK_W=0, BOOK_H=0, PAGE_W=0, PAGE_H=0;
+let renderQueue=[], rendering=false;
+
+// ── Auto-load PDF from ?pdf=filename หรือ ?pdf=URL ───────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const params  = new URLSearchParams(location.search);
+  const pdfParam = params.get('pdf');
+  if(pdfParam){
+    loadPDFFromURL(pdfParam);
+  }
+});
+
+async function loadPDFFromURL(url){
+  show('progress'); setProgress('กำลังโหลด PDF…', 10);
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(WORKER_URL, document.baseURI).href;
+  }
+  const task = pdfjsLib.getDocument({ url });
+  task.onProgress = p => { if(p.total) setProgress('โหลด PDF…', 10 + (p.loaded/p.total)*65); };
+  pdfDoc     = await task.promise;
+  totalPages = pdfDoc.numPages;
+  setProgress('เตรียมหน้า…', 80);
+  await calcSize();
+  buildFlipbook();
+  show('viewer');
+  renderBatch(1, 4);
+}
+
+// ── File inputs ──────────────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e=>{ if(e.target.files[0]) loadPDF(e.target.files[0]); });
+document.getElementById('hdr-file').addEventListener('change',  e=>{ if(e.target.files[0]) loadPDF(e.target.files[0]); });
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e=>{ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('over'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) loadPDF(f); });
+
+// ── Load PDF ─────────────────────────────────────────────────────────────────
+let objectURL = null;
+
+async function loadPDF(file){
+  if(!file.name.toLowerCase().endsWith('.pdf')){ alert('กรุณาเลือกไฟล์ .pdf'); return; }
+  show('progress'); setProgress('กำลังเปิด PDF…', 10);
+
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(WORKER_URL, document.baseURI).href;
+  }
+  if(objectURL){ URL.revokeObjectURL(objectURL); }
+  objectURL = URL.createObjectURL(file);
+
+  setProgress('วิเคราะห์ PDF…', 30);
+  const task = pdfjsLib.getDocument({ url: objectURL });
+  task.onProgress = p => { if(p.total) setProgress('โหลด PDF…', 30 + (p.loaded/p.total)*40); };
+  pdfDoc     = await task.promise;
+  totalPages = pdfDoc.numPages;
+
+  setProgress('เตรียมหน้า…', 75);
+  await calcSize();
+
+  // สร้าง flipbook แสดงทันที (ทุกหน้าเป็น spinner ก่อน)
+  buildFlipbook();
+  show('viewer');
+
+  // โหลด 4 หน้าแรก (ปก + 3 หน้าถัดไป) ก่อนเลย
+  renderBatch(1, 4);
+}
+
+// ── Sizing ────────────────────────────────────────────────────────────────────
+async function calcSize(){
+  const page = await pdfDoc.getPage(1);
+  const vp   = page.getViewport({scale:1});
+  const vw   = Math.min(window.innerWidth - 20, 1280);
+  const vh   = window.innerHeight - 160;
+  const ratio = vp.height / vp.width;
+  PAGE_W = Math.round(Math.min(vw * 0.44, vh / ratio, 560));
+  PAGE_H = Math.round(PAGE_W * ratio);
+  BOOK_W = PAGE_W * 2;
+  BOOK_H = PAGE_H;
+}
+
+// ── Build flipbook ────────────────────────────────────────────────────────────
+// Layout: PDF page 1 = ปก (แสดงหน้าเดียวด้านขวา)
+//         PDF pages 2+ = spreads คู่กัน (2-3, 4-5, ...)
+function buildFlipbook(){
+  const fb = $('#flipbook');
+  if(fb.data('turn')){ try{ fb.turn('destroy'); }catch(e){} }
+  fb.empty();
+
+  for(let i = 1; i <= totalPages; i++){
+    // หน้าแรก = ปก (class "cover-page" สำหรับ styling พิเศษ)
+    const cls = i === 1 ? 'page cover-page' : 'page';
+    fb.append(`<div id="pslot-${i}" class="${cls}"><div class="spin"></div><span class="pnum">${i}</span></div>`);
+  }
+
+  fb.turn({
+    width:       BOOK_W,
+    height:      BOOK_H,
+    autoCenter:  true,
+    gradients:   true,
+    elevation:   50,
+    cornerSize:  Math.round(PAGE_W * 0.9),
+    turnCorners: 'tl,tr,bl,br',
+    when: {
+      turning: function(e, page){
+        updateUI(page);
+        renderBatch(page + 1, 4);
+      },
+      turned: function(e, page){
+        updateUI(page);
+      }
+    }
+  });
+
+  $(window).off('resize.fb').on('resize.fb', debounce(rebuildOnResize, 380));
+  updateUI(1);
+  setupZoom();
+}
+
+// ── Batch render: โหลดทีละ 4 หน้า ────────────────────────────────────────────
+// ใส่ priority queue เพื่อให้หน้าที่ใกล้กับ current มาก่อน
+function renderBatch(from, count = 4){
+  for(let i = from; i < from + count && i <= totalPages; i++){
+    enqueuePriority(i);
+  }
+  processQueue();
+}
+
+// ── Render queue ──────────────────────────────────────────────────────────────
+function enqueuePriority(n){
+  if(n < 1 || n > totalPages) return;
+  const slot = document.getElementById(`pslot-${n}`);
+  if(!slot || slot.dataset.rendered || renderQueue.includes(n)) return;
+  renderQueue.unshift(n); // หน้า priority อยู่หน้า queue
+}
+
+function enqueueLow(n){
+  if(n < 1 || n > totalPages) return;
+  const slot = document.getElementById(`pslot-${n}`);
+  if(!slot || slot.dataset.rendered || renderQueue.includes(n)) return;
+  renderQueue.push(n);
+}
+
+async function processQueue(){
+  if(rendering) return;
+  rendering = true;
+  while(renderQueue.length > 0){
+    const n = renderQueue.shift();
+    const slot = document.getElementById(`pslot-${n}`);
+    if(!slot || slot.dataset.rendered) continue;
+    await doRender(n, slot);
+  }
+  rendering = false;
+  // เมื่อ priority queue หมดแล้ว ค่อยๆ render ที่เหลือใน background
+  setTimeout(bgRender, 300);
+}
+
+async function doRender(n, slot){
+  try {
+    const page  = await pdfDoc.getPage(n);
+    const dpr   = Math.min(window.devicePixelRatio || 1, 1.5);
+    const scale = (PAGE_W / page.getViewport({scale:1}).width) * dpr;
+    const vp    = page.getViewport({scale});
+    const cv    = document.createElement('canvas');
+    cv.width    = Math.round(vp.width);
+    cv.height   = Math.round(vp.height);
+    await page.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+    slot.innerHTML = '';
+    slot.appendChild(cv);
+    slot.insertAdjacentHTML('beforeend', `<span class="pnum">${n}</span>`);
+    slot.dataset.rendered = '1';
+  } catch(e) {
+    slot.innerHTML = `<span style="font-size:.7rem;opacity:.4;color:#333">หน้า ${n}</span>`;
+    slot.dataset.rendered = 'err';
+  }
+}
+
+// Background render ไล่หน้าที่เหลือทีละหน้า
+let bgIdx = 1;
+function bgRender(){
+  while(bgIdx <= totalPages){
+    const n = bgIdx++;
+    const slot = document.getElementById(`pslot-${n}`);
+    if(slot && !slot.dataset.rendered && !renderQueue.includes(n)){
+      enqueueLow(n);
+      processQueue();
+      return;
+    }
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function gotoPage(target){
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  const total = fb.turn('pages');
+  const p = target >= 9999 ? total : Math.max(1, target);
+  fb.turn('page', p);
+  renderBatch(p, 4);
+}
+
+function updateUI(page){
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  const total = fb.turn('pages');
+  // แปลง turn.js page → PDF page number
+  document.getElementById('pg-info').textContent = `หน้า ${page} / ${total}`;
+  document.getElementById('btn-prev').disabled  = page <= 1;
+  document.getElementById('btn-first').disabled = page <= 1;
+  document.getElementById('btn-next').disabled  = page >= total;
+  document.getElementById('btn-last').disabled  = page >= total;
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){ e.preventDefault(); fb.turn('next'); }
+  if(e.key==='ArrowLeft' ||e.key==='PageUp')  { e.preventDefault(); fb.turn('previous'); }
+  if(e.key==='Home'){ e.preventDefault(); fb.turn('page',1); }
+  if(e.key==='End') { e.preventDefault(); fb.turn('page', fb.turn('pages')); }
+});
+
+// Touch
+(function(){
+  let x0=null;
+  document.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(x0===null) return;
+    const dx=e.changedTouches[0].clientX - x0;
+    const fb=$('#flipbook');
+    if(!fb.data||!fb.data('turn')){ x0=null; return; }
+    if(dx < -50) fb.turn('next');
+    else if(dx > 50) fb.turn('previous');
+    x0=null;
+  },{passive:true});
+})();
+
+// ── Zoom on double-click ─────────────────────────────────────────────────────
+function setupZoom(){
+  $('#book-wrap').off('dblclick').on('dblclick', async function(e){
+    const fb = $('#flipbook');
+    if(!fb.data('turn')) return;
+    const page = fb.turn('page');
+    const rect = document.getElementById('flipbook').getBoundingClientRect();
+    const side = (e.clientX - rect.left) < BOOK_W/2 ? 'left' : 'right';
+    let pdfPage = side==='right' ? (page - 1) : (page - 2);
+    pdfPage = Math.max(1, Math.min(pdfPage, totalPages));
+
+    // Render high-res version for zoom
+    const hPage  = await pdfDoc.getPage(pdfPage);
+    const hScale = (PAGE_W * 2.5) / hPage.getViewport({scale:1}).width;
+    const hVp    = hPage.getViewport({scale: hScale});
+    const zc     = document.getElementById('zoom-canvas');
+    zc.width  = Math.round(hVp.width);
+    zc.height = Math.round(hVp.height);
+    await hPage.render({canvasContext: zc.getContext('2d'), viewport: hVp}).promise;
+    document.getElementById('zoom-wrap').classList.add('show');
+  });
+}
+function closeZoom(){ document.getElementById('zoom-wrap').classList.remove('show'); }
+document.getElementById('zoom-wrap').addEventListener('click', e=>{ if(e.target.id==='zoom-wrap') closeZoom(); });
+
+// ── Resize ───────────────────────────────────────────────────────────────────
+async function rebuildOnResize(){
+  if(!pdfDoc) return;
+  renderQueue = []; bgIdx = 1;
+  await calcSize();
+  buildFlipbook();
+  renderBatch(1, 4);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function show(s){
+  document.getElementById('screen-upload').style.display    = s==='upload'   ? 'flex' : 'none';
+  document.getElementById('screen-progress').style.display  = s==='progress' ? 'flex' : 'none';
+  document.getElementById('screen-viewer').style.display    = s==='viewer'   ? 'flex' : 'none';
+}
+function setProgress(msg, pct){
+  document.getElementById('prog-label').textContent = msg;
+  document.getElementById('prog-bar').style.width   = ~~pct + '%';
+}
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+</script>
+</body>
+</html>
