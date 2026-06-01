@@ -557,16 +557,25 @@ document.addEventListener('keydown', e => {
 // Swipe / drag to flip (touch + mouse) — works from anywhere on the book
 (function(){
   const THRESHOLD = 55;
-  let x0 = null, dragging = false;
+  let x0 = null, y0 = null, dragging = false, insideBook = false;
 
-  function start(x){ x0 = x; dragging = false; }
-  function move(x){ if(x0 !== null && Math.abs(x - x0) > 8) dragging = true; }
+  function isOverBook(x, y){
+    const el = document.getElementById('flipbook');
+    if(!el) return false;
+    const r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  function move(x){
+    if(x0 !== null && Math.abs(x - x0) > 8) dragging = true;
+  }
+
   function end(x){
     if(x0 === null) return;
     const dx = x - x0;
-    x0 = null;
-    if(!dragging || Math.abs(dx) < THRESHOLD) { dragging = false; return; }
-    dragging = false;
+    x0 = null; y0 = null;
+    if(!insideBook || !dragging || Math.abs(dx) < THRESHOLD){ dragging = false; insideBook = false; return; }
+    dragging = false; insideBook = false;
     const fb = $('#flipbook');
     if(!fb.data || !fb.data('turn')) return;
     if(dx < 0) fb.turn('next');
@@ -574,16 +583,21 @@ document.addEventListener('keydown', e => {
   }
 
   // Touch
-  document.addEventListener('touchstart', e => start(e.touches[0].clientX),           { passive: true });
-  document.addEventListener('touchmove',  e => move(e.touches[0].clientX),             { passive: true });
-  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX),       { passive: true });
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    insideBook = isOverBook(t.clientX, t.clientY);
+    x0 = t.clientX; y0 = t.clientY; dragging = false;
+  }, { passive: true });
+  document.addEventListener('touchmove',  e => move(e.touches[0].clientX),       { passive: true });
+  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX), { passive: true });
 
-  // Mouse — only on the flipbook area so it doesn't fight with other clicks
-  const area = document.getElementById('book-wrap');
-  area.addEventListener('mousedown',  e => start(e.clientX));
-  area.addEventListener('mousemove',  e => move(e.clientX));
-  area.addEventListener('mouseup',    e => end(e.clientX));
-  area.addEventListener('mouseleave', e => { if(dragging) end(e.clientX); else x0 = null; });
+  // Mouse — capture phase so turn.js stopPropagation doesn't block us
+  document.addEventListener('mousedown', e => {
+    insideBook = isOverBook(e.clientX, e.clientY);
+    x0 = e.clientX; y0 = e.clientY; dragging = false;
+  }, true);
+  document.addEventListener('mousemove', e => move(e.clientX), true);
+  document.addEventListener('mouseup',   e => end(e.clientX),  true);
 })();
 
 // ── Zoom on double-click ─────────────────────────────────────────────────────
