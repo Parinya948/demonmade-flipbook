@@ -104,7 +104,7 @@ header {
   flex-direction: column; align-items: center;
   flex: 1; width: 100%;
   position: relative; z-index: 2;
-  overflow: hidden;
+  overflow: visible; /* ต้อง visible เพื่อให้กระดาษพับออกนอกกรอบได้ */
 }
 
 /* ── Book ── */
@@ -116,8 +116,9 @@ header {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  perspective: 1800px;        /* depth field สำหรับ 3D */
+  perspective: 1800px;
   perspective-origin: 50% 50%;
+  overflow: visible; /* อนุญาตให้กระดาษพับเกินกรอบ */
 }
 
 #book-frame {
@@ -126,6 +127,7 @@ header {
   border: 1px solid rgba(201,169,110,.18);
   position: relative;
   transform-style: preserve-3d;
+  overflow: visible; /* กระดาษพับออกนอกกรอบหนังสือได้ */
   box-shadow:
     0 0 0 1px rgba(0,0,0,.8),
     0 24px 80px rgba(0,0,0,.98),
@@ -147,10 +149,21 @@ header {
 #book-frame::before { top:5px; left:5px; border-width:1px 0 0 1px; }
 #book-frame::after  { bottom:5px; right:5px; border-width:0 1px 1px 0; }
 
+/* turn.js container — ต้อง visible เพื่อให้กระดาษพับออกนอกกรอบ */
+#flipbook {
+  overflow: visible !important;
+}
+
 /* turn.js pages */
 #flipbook .page {
   background: #fff; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
+}
+
+/* turn.js fold layers ต้องออกนอกขอบได้ */
+#flipbook .turn-page-wrapper,
+#flipbook .turn-page {
+  overflow: visible !important;
 }
 #flipbook .page canvas { width:100%; height:100%; display:block; }
 #flipbook .page .spin {
