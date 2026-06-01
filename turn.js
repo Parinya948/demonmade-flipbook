@@ -1092,12 +1092,18 @@
             else return !1;
             break;
           case "sheet":
-            if (a.y < e) a.corner += "t";
-            else if (a.y >= d - e) a.corner += "b";
-            else return !1;
-            if (a.x <= e) a.corner += "l";
-            else if (a.x >= c - e) a.corner += "r";
-            else return !1;
+            // Full-page fold: ถ้า cornerSize ใหญ่มาก → แบ่งเป็น 4 ควอดแรนต์
+            // ทุกตำแหน่งบนหน้าพับได้ โดยเลือกมุมที่ใกล้ที่สุดอัตโนมัติ
+            if (e >= Math.min(c, d) / 2) {
+              a.corner = (a.y < d / 2 ? "t" : "b") + (a.x < c / 2 ? "l" : "r");
+            } else {
+              if (a.y < e) a.corner += "t";
+              else if (a.y >= d - e) a.corner += "b";
+              else return !1;
+              if (a.x <= e) a.corner += "l";
+              else if (a.x >= c - e) a.corner += "r";
+              else return !1;
+            }
         }
         return !a.corner || -1 == f.inArray(a.corner, h) ? !1 : a;
       },
