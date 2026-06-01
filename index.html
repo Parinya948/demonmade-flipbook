@@ -266,7 +266,13 @@ header {
 <script src="pdf.min.js"></script>
 <script>
 const WORKER_URL = 'pdf.worker.min.js';
-const BOOK_FILE  = 'book.pdf';
+
+// ── เปลี่ยน URL ของ PDF ได้ที่นี่ ──────────────────────────────────────────
+// ตัวอย่าง GitHub Releases:
+//   'https://github.com/Parinya948/demonmade-flipbook/releases/download/v1.0/book.pdf'
+// ตัวอย่างไฟล์ใน repo (ถ้าไฟล์เล็กกว่า 100MB):
+//   'book.pdf'
+const BOOK_FILE = 'https://github.com/Parinya948/demonmade-flipbook/releases/download/v1.0/book.pdf';
 
 let pdfDoc=null, totalPages=0;
 let BOOK_W=0, BOOK_H=0, PAGE_W=0, PAGE_H=0;
