@@ -231,8 +231,13 @@ header {
 <!-- Viewer -->
 <div id="screen-viewer">
   <div id="book-wrap">
-    <div id="book-frame">
+    <div id="book-frame" style="position:relative;">
       <div id="flipbook"></div>
+      <!-- overlay คลุมทับ flipbook ทั้งหมด ดัก touch/mouse ก่อน turn.js -->
+      <div id="swipe-overlay" style="
+        position:absolute; inset:0; z-index:999;
+        touch-action:pan-y;
+      "></div>
     </div>
   </div>
 
@@ -343,8 +348,10 @@ function buildFlipbook() {
     }
   });
 
+  // ปิด turn.js built-in drag/touch handler — เราใช้ overlay แทน
+  try { fb.turn('disable', true); } catch(e) {}
+
   $(window).off('resize.fb').on('resize.fb', debounce(rebuildOnResize, 350));
-  // รอให้ turn.js init เสร็จก่อนค่อย update UI
   setTimeout(() => updateUI(fb.turn('page') || 1), 50);
   setupZoom();
 }
@@ -390,57 +397,63 @@ function updateUI(page) {
   document.getElementById('btn-last').disabled  = page >= total;
 }
 
-// ── Swipe / click anywhere to flip ───────────────────────────────────────────
-// (capture phase ทำให้ผ่าน turn.js internal handlers ได้)
+// ── Swipe / click via overlay (ปิด turn.js drag ทิ้ง ให้เราควบคุมเอง) ────────
 (function () {
-  const SWIPE_MIN = 40;   // px ขั้นต่ำที่นับเป็น swipe
-  const CLICK_MAX = 8;    // px ที่ถือว่า "ไม่ขยับ" = click
-  let startX = null, moved = false, active = false;
+  const SWIPE_MIN = 40;
+  const CLICK_MAX = 8;
+  let startX = null, moved = false;
 
-  function onStart(x, y) {
-    const el = document.getElementById('flipbook');
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    // รับเฉพาะที่อยู่ในพื้นที่หนังสือ
-    if (x < r.left || x > r.right || y < r.top || y > r.bottom) return;
-    startX = x; moved = false; active = true;
-  }
+  function getOverlay() { return document.getElementById('swipe-overlay'); }
 
-  function onMove(x) {
-    if (!active) return;
-    if (Math.abs(x - startX) > CLICK_MAX) moved = true;
-  }
+  function bindOverlay() {
+    const ov = getOverlay();
+    if (!ov || ov._bound) return;
+    ov._bound = true;
 
-  function onEnd(x) {
-    if (!active) { active = false; startX = null; return; }
-    const dx = x - startX;
-    active = false; startX = null;
+    ov.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX; moved = false;
+    }, { passive: true });
 
-    const fb = $('#flipbook');
-    if (!fb.data || !fb.data('turn')) return;
+    ov.addEventListener('touchmove', e => {
+      if (startX === null) return;
+      if (Math.abs(e.touches[0].clientX - startX) > CLICK_MAX) moved = true;
+    }, { passive: true });
 
-    if (moved) {
-      // ── swipe ──
-      if (Math.abs(dx) >= SWIPE_MIN) {
+    ov.addEventListener('touchend', e => {
+      if (startX === null) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      if (moved && Math.abs(dx) >= SWIPE_MIN) {
         dx < 0 ? flipNext() : flipPrev();
+      } else if (!moved) {
+        const r = ov.getBoundingClientRect();
+        e.changedTouches[0].clientX < r.left + r.width / 2 ? flipPrev() : flipNext();
       }
-    } else {
-      // ── click — ซ้าย=ย้อน, ขวา=ถัดไป ──
-      const r = document.getElementById('flipbook').getBoundingClientRect();
-      x < r.left + r.width / 2 ? flipPrev() : flipNext();
-    }
-    moved = false;
+      startX = null; moved = false;
+    }, { passive: true });
+
+    ov.addEventListener('mousedown', e => { startX = e.clientX; moved = false; });
+    ov.addEventListener('mousemove', e => {
+      if (startX === null) return;
+      if (Math.abs(e.clientX - startX) > CLICK_MAX) moved = true;
+    });
+    ov.addEventListener('mouseup', e => {
+      if (startX === null) return;
+      const dx = e.clientX - startX;
+      if (moved && Math.abs(dx) >= SWIPE_MIN) {
+        dx < 0 ? flipNext() : flipPrev();
+      } else if (!moved) {
+        const r = ov.getBoundingClientRect();
+        e.clientX < r.left + r.width / 2 ? flipPrev() : flipNext();
+      }
+      startX = null; moved = false;
+    });
   }
 
-  // Touch — capture phase เหมือน mouse เพื่อให้รับ event ก่อน turn.js
-  document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { capture: true, passive: true });
-  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX),                         { capture: true, passive: true });
-  document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX),                   { capture: true, passive: true });
-
-  // Mouse — capture phase
-  document.addEventListener('mousedown',  e => onStart(e.clientX, e.clientY), true);
-  document.addEventListener('mousemove',  e => onMove(e.clientX),             true);
-  document.addEventListener('mouseup',    e => onEnd(e.clientX),              true);
+  // bind ทันทีและทุกครั้งที่ flipbook rebuild
+  document.addEventListener('DOMContentLoaded', bindOverlay);
+  // ถ้า overlay สร้างหลัง DOMContentLoaded ให้ bind ผ่าน MutationObserver
+  const mo = new MutationObserver(() => { if (getOverlay()) { bindOverlay(); mo.disconnect(); } });
+  mo.observe(document.body, { childList: true, subtree: true });
 })();
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
