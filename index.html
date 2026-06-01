@@ -233,10 +233,16 @@ header {
   <div id="book-wrap">
     <div id="book-frame" style="position:relative;">
       <div id="flipbook"></div>
-      <!-- overlay คลุมทับ flipbook ทั้งหมด ดัก touch/mouse ก่อน turn.js -->
+      <!-- overlay รับ swipe กลางหน้า, ตัดมุม 4 ด้านออกให้ turn.js จับ corner fold -->
       <div id="swipe-overlay" style="
         position:absolute; inset:0; z-index:999;
         touch-action:pan-y;
+        clip-path: polygon(
+          110px 0%, calc(100% - 110px) 0%,
+          100% 110px, 100% calc(100% - 110px),
+          calc(100% - 110px) 100%, 110px 100%,
+          0% calc(100% - 110px), 0% 110px
+        );
       "></div>
     </div>
   </div>
@@ -341,7 +347,8 @@ function buildFlipbook() {
     autoCenter:  true,
     gradients:   true,
     elevation:   50,
-    cornerSize:  0,
+    cornerSize:  110,   // เปิด corner fold กลับมา
+    turnCorners: 'tl,tr,bl,br',
     when: {
       turning: (e, page) => { updateUI(page); renderBatch(page + 1, 8); },
       turned:  (e, page) => { updateUI(page); }
