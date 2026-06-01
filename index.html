@@ -214,33 +214,54 @@ header {
 #controls {
   flex-shrink: 0;
   display: flex; align-items: center;
-  width: 100%;
+  width: 100%; min-height: 56px;
   background: rgba(10,10,12,.92);
   backdrop-filter: blur(12px);
   border-top: 1px solid rgba(201,169,110,.1);
+  padding: 0 2px;
 }
 
-/* page info — ใหญ่เด่น ตรงกลาง */
+/* page info — ตรงกลาง */
 #pg-info {
   flex: 1; text-align: center;
   font-size: .85rem; letter-spacing: 2px;
   color: rgba(201,169,110,.7); font-weight: 300;
+  white-space: nowrap;
 }
 
+/* ปุ่ม text (← Prev / Next →) */
 .ctrl {
   background: transparent; border: none;
-  color: rgba(201,169,110,.5);
-  padding: 14px 20px;
+  color: rgba(201,169,110,.55);
+  padding: 16px 14px;
   font-family: 'Cormorant Garamond', serif;
-  font-size: .72rem; font-weight: 600;
+  font-size: .78rem; font-weight: 600;
   letter-spacing: 2px; text-transform: uppercase;
   cursor: pointer;
   transition: background .15s, color .15s;
-  white-space: nowrap;
+  white-space: nowrap; flex-shrink: 0;
 }
-.ctrl:hover:not(:disabled) { background: rgba(201,169,110,.06); color: var(--gold-light); }
+.ctrl:hover:not(:disabled) { background: rgba(201,169,110,.07); color: var(--gold-light); }
 .ctrl:disabled { opacity: .15; cursor: default; }
 
+/* ปุ่ม icon (|◀ ▶|) */
+.ctrl-icon {
+  background: transparent; border: none;
+  color: rgba(201,169,110,.55);
+  padding: 0 14px; min-height: 56px;
+  font-size: 1.05rem; line-height: 1;
+  cursor: pointer; flex-shrink: 0;
+  transition: color .15s;
+  display: flex; align-items: center;
+}
+.ctrl-icon:hover:not(:disabled) { color: var(--gold-light); }
+.ctrl-icon:disabled { opacity: .15; cursor: default; }
+
+@media(max-width:480px){
+  .ctrl      { padding: 16px 8px; font-size: .7rem; letter-spacing: 1px; }
+  .ctrl-icon { padding: 0 8px; font-size: 1rem; }
+  #pg-info   { font-size: .78rem; letter-spacing: 1px; }
+}
 
 /* ── Zoom overlay ── */
 #zoom-wrap {
@@ -264,10 +285,6 @@ header {
 }
 #zoom-x:hover { background: rgba(201,169,110,.1); }
 
-@media(max-width:520px){
-  .ctrl { padding:12px 12px; font-size:.65rem; letter-spacing:1px; }
-  #pg-info { font-size:.75rem; }
-}
 </style>
 </head>
 <body>
@@ -297,11 +314,11 @@ header {
   </div>
 
   <div id="controls">
-    <button class="ctrl" id="btn-first" onclick="gotoPage(1)" title="หน้าแรก">&#9664;&#9664;</button>
-    <button class="ctrl" id="btn-prev"  onclick="flipPrev()">&#8592; Prev</button>
+    <button class="ctrl-icon" id="btn-first" onclick="gotoPage(1)"    title="หน้าแรก">&#x23EE;</button>
+    <button class="ctrl"      id="btn-prev"  onclick="flipPrev()">&#8592; Prev</button>
     <span id="pg-info">— / —</span>
-    <button class="ctrl" id="btn-next"  onclick="flipNext()">Next &#8594;</button>
-    <button class="ctrl" id="btn-last"  onclick="gotoPage(9999)" title="หน้าสุดท้าย">&#9654;&#9654;</button>
+    <button class="ctrl"      id="btn-next"  onclick="flipNext()">Next &#8594;</button>
+    <button class="ctrl-icon" id="btn-last"  onclick="gotoPage(9999)" title="หน้าสุดท้าย">&#x23ED;</button>
   </div>
 </div>
 
