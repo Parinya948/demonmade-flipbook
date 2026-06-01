@@ -570,16 +570,27 @@ document.addEventListener('keydown', e => {
     if(x0 !== null && Math.abs(x - x0) > 8) dragging = true;
   }
 
-  function end(x){
+  function end(x, y){
     if(x0 === null) return;
     const dx = x - x0;
+    const wasInside = insideBook;
+    const startX = x0;
     x0 = null; y0 = null;
-    if(!insideBook || !dragging || Math.abs(dx) < THRESHOLD){ dragging = false; insideBook = false; return; }
-    dragging = false; insideBook = false;
     const fb = $('#flipbook');
-    if(!fb.data || !fb.data('turn')) return;
-    if(dx < 0) fb.turn('next');
-    else        fb.turn('previous');
+    if(!fb.data || !fb.data('turn')){ dragging = false; insideBook = false; return; }
+
+    if(wasInside && dragging && Math.abs(dx) >= THRESHOLD){
+      // swipe/drag flip
+      if(dx < 0) fb.turn('next');
+      else        fb.turn('previous');
+    } else if(wasInside && !dragging){
+      // simple click — left half = prev, right half = next
+      const r = document.getElementById('flipbook').getBoundingClientRect();
+      const mid = r.left + r.width / 2;
+      if(x < mid) fb.turn('previous');
+      else         fb.turn('next');
+    }
+    dragging = false; insideBook = false;
   }
 
   // Touch
@@ -588,8 +599,8 @@ document.addEventListener('keydown', e => {
     insideBook = isOverBook(t.clientX, t.clientY);
     x0 = t.clientX; y0 = t.clientY; dragging = false;
   }, { passive: true });
-  document.addEventListener('touchmove',  e => move(e.touches[0].clientX),       { passive: true });
-  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX), { passive: true });
+  document.addEventListener('touchmove',  e => move(e.touches[0].clientX),                                   { passive: true });
+  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
 
   // Mouse — capture phase so turn.js stopPropagation doesn't block us
   document.addEventListener('mousedown', e => {
@@ -597,7 +608,7 @@ document.addEventListener('keydown', e => {
     x0 = e.clientX; y0 = e.clientY; dragging = false;
   }, true);
   document.addEventListener('mousemove', e => move(e.clientX), true);
-  document.addEventListener('mouseup',   e => end(e.clientX),  true);
+  document.addEventListener('mouseup',   e => end(e.clientX, e.clientY), true);
 })();
 
 // ── Zoom on double-click ─────────────────────────────────────────────────────
