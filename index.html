@@ -231,19 +231,8 @@ header {
 <!-- Viewer -->
 <div id="screen-viewer">
   <div id="book-wrap">
-    <div id="book-frame" style="position:relative;">
+    <div id="book-frame">
       <div id="flipbook"></div>
-      <!-- overlay รับ swipe กลางหน้า, ตัดมุม 4 ด้านออกให้ turn.js จับ corner fold -->
-      <div id="swipe-overlay" style="
-        position:absolute; inset:0; z-index:999;
-        touch-action:pan-y;
-        clip-path: polygon(
-          110px 0%, calc(100% - 110px) 0%,
-          100% 110px, 100% calc(100% - 110px),
-          calc(100% - 110px) 100%, 110px 100%,
-          0% calc(100% - 110px), 0% 110px
-        );
-      "></div>
     </div>
   </div>
 
@@ -347,7 +336,7 @@ function buildFlipbook() {
     autoCenter:  true,
     gradients:   true,
     elevation:   50,
-    cornerSize:  110,   // เปิด corner fold กลับมา
+    cornerSize:  Math.max(PAGE_W, PAGE_H), // ทั้งหน้าเป็น fold zone
     turnCorners: 'tl,tr,bl,br',
     when: {
       turning: (e, page) => { updateUI(page); renderBatch(page + 1, 8); },
@@ -402,63 +391,43 @@ function updateUI(page) {
   document.getElementById('btn-last').disabled  = page >= total;
 }
 
-// ── Swipe / click via overlay (ปิด turn.js drag ทิ้ง ให้เราควบคุมเอง) ────────
+// ── Click / tap anywhere on book to flip ─────────────────────────────────────
+// turn.js จัดการ drag/fold ทั้งหน้าเองแล้ว (cornerSize = full page)
+// เราดูแลแค่ "แตะโดยไม่ขยับ" = click → เปลี่ยนหน้า
 (function () {
-  const SWIPE_MIN = 40;
-  const CLICK_MAX = 8;
-  let startX = null, moved = false;
+  const CLICK_MAX = 10; // px — ถ้าขยับเกินนี้ถือว่า drag ให้ turn.js จัดการ
+  let startX = null, startY = null;
 
-  function getOverlay() { return document.getElementById('swipe-overlay'); }
-
-  function bindOverlay() {
-    const ov = getOverlay();
-    if (!ov || ov._bound) return;
-    ov._bound = true;
-
-    ov.addEventListener('touchstart', e => {
-      startX = e.touches[0].clientX; moved = false;
-    }, { passive: true });
-
-    ov.addEventListener('touchmove', e => {
-      if (startX === null) return;
-      if (Math.abs(e.touches[0].clientX - startX) > CLICK_MAX) moved = true;
-    }, { passive: true });
-
-    ov.addEventListener('touchend', e => {
-      if (startX === null) return;
-      const dx = e.changedTouches[0].clientX - startX;
-      if (moved && Math.abs(dx) >= SWIPE_MIN) {
-        dx < 0 ? flipNext() : flipPrev();
-      } else if (!moved) {
-        const r = ov.getBoundingClientRect();
-        e.changedTouches[0].clientX < r.left + r.width / 2 ? flipPrev() : flipNext();
-      }
-      startX = null; moved = false;
-    }, { passive: true });
-
-    ov.addEventListener('mousedown', e => { startX = e.clientX; moved = false; });
-    ov.addEventListener('mousemove', e => {
-      if (startX === null) return;
-      if (Math.abs(e.clientX - startX) > CLICK_MAX) moved = true;
-    });
-    ov.addEventListener('mouseup', e => {
-      if (startX === null) return;
-      const dx = e.clientX - startX;
-      if (moved && Math.abs(dx) >= SWIPE_MIN) {
-        dx < 0 ? flipNext() : flipPrev();
-      } else if (!moved) {
-        const r = ov.getBoundingClientRect();
-        e.clientX < r.left + r.width / 2 ? flipPrev() : flipNext();
-      }
-      startX = null; moved = false;
-    });
+  function isOnBook(x, y) {
+    const el = document.getElementById('flipbook');
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }
 
-  // bind ทันทีและทุกครั้งที่ flipbook rebuild
-  document.addEventListener('DOMContentLoaded', bindOverlay);
-  // ถ้า overlay สร้างหลัง DOMContentLoaded ให้ bind ผ่าน MutationObserver
-  const mo = new MutationObserver(() => { if (getOverlay()) { bindOverlay(); mo.disconnect(); } });
-  mo.observe(document.body, { childList: true, subtree: true });
+  function onStart(x, y) {
+    if (!isOnBook(x, y)) return;
+    startX = x; startY = y;
+  }
+
+  function onEnd(x, y) {
+    if (startX === null) return;
+    const dist = Math.hypot(x - startX, y - startY);
+    startX = null; startY = null;
+    if (dist > CLICK_MAX) return; // drag → turn.js จัดการแล้ว ไม่ต้องทำอะไร
+
+    // แตะ = click → ซ้ายครึ่ง=prev, ขวาครึ่ง=next
+    const r = document.getElementById('flipbook').getBoundingClientRect();
+    x < r.left + r.width / 2 ? flipPrev() : flipNext();
+  }
+
+  // Touch
+  document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
+
+  // Mouse
+  document.addEventListener('mousedown', e => onStart(e.clientX, e.clientY), true);
+  document.addEventListener('mouseup',   e => onEnd(e.clientX, e.clientY),   true);
 })();
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
