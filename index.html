@@ -461,14 +461,14 @@ function updateUI(page) {
     // drag ขนาดกลาง-ใหญ่ → turn.js จัดการ fold อยู่แล้ว ไม่ต้องทำอะไร
   }
 
-  // Touch
+  // Touch — ใช้ swipe + tap เต็มรูปแบบ
   document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
   document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX,  e.touches[0].clientY), { passive: true });
   document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
 
-  // Mouse
+  // Mouse (desktop) — ใช้แค่ click เท่านั้น ไม่ใช้ swipe (turn.js จัดการ drag fold อยู่แล้ว)
   document.addEventListener('mousedown', e => onStart(e.clientX, e.clientY), true);
-  document.addEventListener('mousemove', e => onMove(e.clientX,  e.clientY),  true);
+  // ไม่ใส่ mousemove — ป้องกันเปลี่ยนหน้าอัตโนมัติเวลาลากเมาส์
   document.addEventListener('mouseup',   e => onEnd(e.clientX,   e.clientY),  true);
 })();
 
