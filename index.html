@@ -300,7 +300,7 @@ async function loadBook(url) {
     await calcSize();
     buildFlipbook();
     show('viewer');
-    renderBatch(1, 6);
+    renderBatch(1, 10); // โหลด 10 หน้าแรกทันที
   } catch (e) {
     show('error');
     document.getElementById('err-msg').textContent =
@@ -344,7 +344,7 @@ function buildFlipbook() {
     // navigation ทำผ่าน swipe/click handler ของเราแทน (เสถียรกว่า)
     cornerSize:  0,
     when: {
-      turning: (e, page) => { updateUI(page); renderBatch(page + 1, 6); },
+      turning: (e, page) => { updateUI(page); renderBatch(page + 1, 8); },
       turned:  (e, page) => { updateUI(page); }
     }
   });
@@ -445,36 +445,47 @@ document.addEventListener('keydown', e => {
   if (e.key === 'End')  { e.preventDefault(); gotoPage(9999); }
 });
 
-// ── Render queue ──────────────────────────────────────────────────────────────
-function renderBatch(from, count = 6) {
+// ── Render queue — parallel 4 lanes ──────────────────────────────────────────
+const MAX_LANES = 4;   // render 4 หน้าพร้อมกัน
+let activeLanes = 0;
+const inQueue   = new Set();
+
+function renderBatch(from, count = 8) {
   for (let i = from; i < from + count && i <= totalPages; i++) enqueue(i, true);
-  processQueue();
+  pumpQueue();
 }
 
 function enqueue(n, priority = false) {
   if (n < 1 || n > totalPages) return;
   const slot = document.getElementById(`p${n}`);
-  if (!slot || slot.dataset.rendered || renderQueue.includes(n)) return;
+  if (!slot || slot.dataset.rendered || inQueue.has(n)) return;
+  inQueue.add(n);
   priority ? renderQueue.unshift(n) : renderQueue.push(n);
 }
 
-async function processQueue() {
-  if (rendering) return;
-  rendering = true;
-  while (renderQueue.length > 0) {
+function pumpQueue() {
+  while (activeLanes < MAX_LANES && renderQueue.length > 0) {
     const n    = renderQueue.shift();
     const slot = document.getElementById(`p${n}`);
-    if (!slot || slot.dataset.rendered) continue;
-    await doRender(n, slot);
+    if (!slot || slot.dataset.rendered) { inQueue.delete(n); continue; }
+    activeLanes++;
+    doRender(n, slot).finally(() => {
+      activeLanes--;
+      inQueue.delete(n);
+      pumpQueue(); // เปิด lane ใหม่ทันทีที่ว่าง
+    });
   }
-  rendering = false;
-  setTimeout(bgRender, 400);
+  // ถ้าคิวว่างแล้วให้ render background ต่อ
+  if (renderQueue.length === 0 && activeLanes === 0) {
+    setTimeout(bgRender, 200);
+  }
 }
 
 async function doRender(n, slot) {
   try {
     const page  = await pdfDoc.getPage(n);
-    const dpr   = Math.min(window.devicePixelRatio || 1, 2);
+    // DPR 1.5 เร็วกว่า 2 ชัดพอสำหรับ retina
+    const dpr   = Math.min(window.devicePixelRatio || 1, 1.5);
     const scale = (PAGE_W / page.getViewport({ scale: 1 }).width) * dpr;
     const vp    = page.getViewport({ scale });
     const cv    = document.createElement('canvas');
@@ -491,13 +502,15 @@ async function doRender(n, slot) {
 }
 
 function bgRender() {
-  while (bgIdx <= totalPages) {
+  let kicked = 0;
+  while (bgIdx <= totalPages && kicked < MAX_LANES) {
     const n    = bgIdx++;
     const slot = document.getElementById(`p${n}`);
-    if (slot && !slot.dataset.rendered && !renderQueue.includes(n)) {
-      enqueue(n); processQueue(); return;
+    if (slot && !slot.dataset.rendered && !inQueue.has(n)) {
+      enqueue(n); kicked++;
     }
   }
+  if (kicked > 0) pumpQueue();
 }
 
 // ── Resize ────────────────────────────────────────────────────────────────────
