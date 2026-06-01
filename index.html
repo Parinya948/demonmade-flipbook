@@ -554,19 +554,36 @@ document.addEventListener('keydown', e => {
   if(e.key==='End') { e.preventDefault(); fb.turn('page', fb.turn('pages')); }
 });
 
-// Touch
+// Swipe / drag to flip (touch + mouse) — works from anywhere on the book
 (function(){
-  let x0=null;
-  document.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; },{passive:true});
-  document.addEventListener('touchend',e=>{
-    if(x0===null) return;
-    const dx=e.changedTouches[0].clientX - x0;
-    const fb=$('#flipbook');
-    if(!fb.data||!fb.data('turn')){ x0=null; return; }
-    if(dx < -50) fb.turn('next');
-    else if(dx > 50) fb.turn('previous');
-    x0=null;
-  },{passive:true});
+  const THRESHOLD = 55;
+  let x0 = null, dragging = false;
+
+  function start(x){ x0 = x; dragging = false; }
+  function move(x){ if(x0 !== null && Math.abs(x - x0) > 8) dragging = true; }
+  function end(x){
+    if(x0 === null) return;
+    const dx = x - x0;
+    x0 = null;
+    if(!dragging || Math.abs(dx) < THRESHOLD) { dragging = false; return; }
+    dragging = false;
+    const fb = $('#flipbook');
+    if(!fb.data || !fb.data('turn')) return;
+    if(dx < 0) fb.turn('next');
+    else        fb.turn('previous');
+  }
+
+  // Touch
+  document.addEventListener('touchstart', e => start(e.touches[0].clientX),           { passive: true });
+  document.addEventListener('touchmove',  e => move(e.touches[0].clientX),             { passive: true });
+  document.addEventListener('touchend',   e => end(e.changedTouches[0].clientX),       { passive: true });
+
+  // Mouse — only on the flipbook area so it doesn't fight with other clicks
+  const area = document.getElementById('book-wrap');
+  area.addEventListener('mousedown',  e => start(e.clientX));
+  area.addEventListener('mousemove',  e => move(e.clientX));
+  area.addEventListener('mouseup',    e => end(e.clientX));
+  area.addEventListener('mouseleave', e => { if(dragging) end(e.clientX); else x0 = null; });
 })();
 
 // ── Zoom on double-click ─────────────────────────────────────────────────────
