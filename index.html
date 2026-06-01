@@ -309,18 +309,32 @@ async function loadBook(url) {
 }
 
 // ── Sizing ────────────────────────────────────────────────────────────────────
+const MOBILE_BP = 640; // px — ต่ำกว่านี้ถือเป็นมือถือ
+
+function isMobile() { return window.innerWidth < MOBILE_BP; }
+
 async function calcSize() {
   const page  = await pdfDoc.getPage(1);
   const vp    = page.getViewport({ scale: 1 });
   const ratio = vp.height / vp.width;
   const hdr   = document.querySelector('header').offsetHeight;
-  const ctrl  = 52; // controls bar height estimate
-  const vw    = window.innerWidth  - 32;
-  const vh    = window.innerHeight - hdr - ctrl - 32;
-  PAGE_W = Math.round(Math.min(vw * 0.44, vh / ratio, 580));
-  PAGE_H = Math.round(PAGE_W * ratio);
-  BOOK_W = PAGE_W * 2;
-  BOOK_H = PAGE_H;
+  const ctrl  = 52;
+  const vw    = window.innerWidth  - 24;
+  const vh    = window.innerHeight - hdr - ctrl - 24;
+
+  if (isMobile()) {
+    // มือถือ: ทีละ 1 หน้า กว้าง 85% จอ
+    PAGE_W = Math.round(Math.min(vw * 0.85, vh / ratio));
+    PAGE_H = Math.round(PAGE_W * ratio);
+    BOOK_W = PAGE_W;   // single-page width
+    BOOK_H = PAGE_H;
+  } else {
+    // desktop: 2 หน้าคู่กัน
+    PAGE_W = Math.round(Math.min(vw * 0.44, vh / ratio, 580));
+    PAGE_H = Math.round(PAGE_W * ratio);
+    BOOK_W = PAGE_W * 2;
+    BOOK_H = PAGE_H;
+  }
 }
 
 // ── Build flipbook ────────────────────────────────────────────────────────────
@@ -337,11 +351,10 @@ function buildFlipbook() {
   fb.turn({
     width:       BOOK_W,
     height:      BOOK_H,
+    display:     isMobile() ? 'single' : 'double',
     autoCenter:  true,
     gradients:   true,
     elevation:   50,
-    // cornerSize=0 → ปิด turn.js corner-drag ทั้งหมด
-    // navigation ทำผ่าน swipe/click handler ของเราแทน (เสถียรกว่า)
     cornerSize:  0,
     when: {
       turning: (e, page) => { updateUI(page); renderBatch(page + 1, 8); },
@@ -370,11 +383,15 @@ function updateUI(page) {
   if (!fb.data || !fb.data('turn')) return;
   const total = fb.turn('pages');
 
-  // แสดงเลขหน้า PDF จริงๆ
-  // turn.js page 1 = ปก, page 2 = หน้า 2, …
-  const lo = page === 1 ? 1 : page;
-  const hi = Math.min(lo + 1, total);
-  const txt = lo === hi ? `${lo} / ${total}` : `${lo} – ${hi} / ${total}`;
+  // แสดงเลขหน้า
+  let txt;
+  if (isMobile()) {
+    txt = `${page} / ${total}`;
+  } else {
+    const lo = page;
+    const hi = Math.min(lo + 1, total);
+    txt = lo === hi ? `${lo} / ${total}` : `${lo} – ${hi} / ${total}`;
+  }
   document.getElementById('pg-info').textContent = txt;
 
   document.getElementById('btn-prev').disabled  = page <= 1;
