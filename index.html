@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Demonmade Flipbook</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#1a1a2e; --surface:#16213e;
+  --accent:#e94560; --text:#eaeaea;
+}
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  min-height:100vh; display:flex; flex-direction:column;
+  align-items:center; overflow-x:hidden;
+}
+
+/* Header */
+header {
+  width:100%; padding:13px 24px;
+  background:var(--surface);
+  display:flex; align-items:center; justify-content:space-between;
+  box-shadow:0 2px 16px rgba(0,0,0,.5); z-index:100; flex-shrink:0;
+}
+.logo { font-size:1.25rem; font-weight:700; color:var(--accent); letter-spacing:.5px; }
+.logo span { color:var(--text); }
+.hdr-upload {
+  display:flex; align-items:center; gap:6px;
+  font-size:.82rem; opacity:.65; cursor:pointer;
+  background:none; border:none; color:var(--text);
+  transition:opacity .2s; padding:4px 8px; border-radius:6px;
+}
+.hdr-upload:hover { opacity:1; background:rgba(255,255,255,.06); }
+
+/* Upload */
+#screen-upload {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; flex:1; width:100%; padding:32px 16px;
+}
+#drop-zone {
+  width:min(500px,92vw); border:2px dashed var(--accent);
+  border-radius:18px; padding:52px 28px; text-align:center;
+  cursor:pointer; background:rgba(233,69,96,.05);
+  transition:background .25s,border-color .25s;
+}
+#drop-zone:hover, #drop-zone.over {
+  background:rgba(233,69,96,.12); border-color:#ff6b8a;
+}
+#drop-zone .icon { font-size:3.2rem; margin-bottom:14px; }
+#drop-zone h2 { font-size:1.25rem; margin-bottom:8px; }
+#drop-zone p  { font-size:.87rem; opacity:.6; line-height:1.8; }
+.btn-pick {
+  margin-top:22px; background:var(--accent); color:#fff;
+  border:none; border-radius:9px; padding:11px 32px;
+  font-size:.95rem; cursor:pointer; transition:opacity .2s;
+}
+.btn-pick:hover { opacity:.85; }
+#file-input { display:none; }
+
+/* Progress */
+#screen-progress {
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; flex:1; gap:14px; padding:24px;
+}
+#prog-label { font-size:.9rem; opacity:.75; }
+#prog-track {
+  width:min(420px,85vw); height:8px;
+  background:rgba(255,255,255,.1); border-radius:8px; overflow:hidden;
+}
+#prog-bar { height:100%; width:0%; background:var(--accent); border-radius:8px; transition:width .12s; }
+
+/* Viewer */
+#screen-viewer {
+  display:none; flex-direction:column; align-items:center;
+  width:100%; flex:1; padding-bottom:40px;
+}
+
+/* Book */
+#book-wrap {
+  perspective:2600px;
+  margin:28px auto 0;
+  display:flex; align-items:center; justify-content:center;
+}
+
+#flipbook { /* size set by JS */ }
+
+/* turn.js page styles */
+#flipbook .page {
+  background:#fff;
+  overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+}
+#flipbook .page canvas { width:100%; height:100%; display:block; }
+
+/* Loading spinner inside page */
+#flipbook .page .spin {
+  width:36px; height:36px; border:3px solid #ddd;
+  border-top-color:var(--accent); border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Page number */
+.pnum {
+  position:absolute; bottom:7px; right:9px;
+  font-size:.68rem; opacity:.3; pointer-events:none; color:#000;
+}
+
+/* ปก: ซ่อนเลขหน้า + กรอบเด่นขึ้น */
+#flipbook .cover-page .pnum { display:none; }
+#flipbook .cover-page {
+  box-shadow: 4px 0 20px rgba(0,0,0,.4);
+}
+
+/* Hard covers */
+#flipbook .hard {
+  background:linear-gradient(135deg,#1a1a3e,#0f3460) !important;
+  color:rgba(255,255,255,.85);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1rem; font-weight:600; letter-spacing:.5px;
+  border:none !important;
+}
+#flipbook .hard.back-cover {
+  background:linear-gradient(135deg,#0f3460,#1a1a3e) !important;
+}
+
+/* Controls */
+#controls {
+  display:flex; align-items:center; gap:12px;
+  margin-top:20px; flex-wrap:wrap; justify-content:center;
+}
+.ctrl {
+  background:var(--surface); border:1px solid rgba(255,255,255,.1);
+  color:var(--text); border-radius:8px; padding:9px 16px;
+  cursor:pointer; font-size:.87rem;
+  transition:background .2s,border-color .2s;
+  display:flex; align-items:center; gap:5px;
+}
+.ctrl:hover:not(:disabled) { background:#0f3460; border-color:var(--accent); }
+.ctrl:disabled { opacity:.28; cursor:default; }
+#pg-info { font-size:.87rem; opacity:.65; min-width:110px; text-align:center; }
+
+/* Zoom */
+#zoom-wrap {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.92); z-index:500;
+  align-items:center; justify-content:center;
+}
+#zoom-wrap.show { display:flex; }
+#zoom-canvas { max-width:94vw; max-height:90vh; border-radius:6px; box-shadow:0 8px 40px rgba(0,0,0,.8); }
+#zoom-x {
+  position:absolute; top:14px; right:18px;
+  background:var(--accent); border:none; border-radius:50%;
+  width:38px; height:38px; color:#fff; font-size:1.15rem;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+
+@media(max-width:600px){
+  .logo { font-size:1rem; }
+  #controls { gap:7px; }
+  .ctrl { padding:8px 11px; font-size:.79rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Demon<span>made</span> Flipbook</div>
+  <label class="hdr-upload">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    เปลี่ยน PDF
+    <input type="file" id="hdr-file" accept=".pdf" style="display:none">
+  </label>
+</header>
+
+<div id="screen-upload">
+  <div id="drop-zone">
+    <div class="icon">📄</div>
+    <h2>อัปโหลดไฟล์ PDF</h2>
+    <p>รองรับไฟล์ขนาดใหญ่ · ลาก &amp; วางหรือคลิกเลือกไฟล์<br>
+       <small style="opacity:.5">PDF จะถูกเปิดในเบราว์เซอร์ ไม่มีการอัปโหลดสู่เซิร์ฟเวอร์</small>
+    </p>
+    <button class="btn-pick" onclick="document.getElementById('file-input').click()">เลือกไฟล์ PDF</button>
+    <input type="file" id="file-input" accept=".pdf">
+  </div>
+</div>
+
+<div id="screen-progress">
+  <p id="prog-label">กำลังโหลด…</p>
+  <div id="prog-track"><div id="prog-bar"></div></div>
+</div>
+
+<div id="screen-viewer">
+  <div id="book-wrap">
+    <div id="flipbook"></div>
+  </div>
+  <div id="controls">
+    <button class="ctrl" id="btn-first" onclick="gotoPage(1)" title="หน้าแรก">⏮</button>
+    <button class="ctrl" id="btn-prev"  onclick="$('#flipbook').turn('previous')">◀ ก่อนหน้า</button>
+    <span id="pg-info">—</span>
+    <button class="ctrl" id="btn-next"  onclick="$('#flipbook').turn('next')">ถัดไป ▶</button>
+    <button class="ctrl" id="btn-last"  onclick="gotoPage(9999)" title="หน้าสุดท้าย">⏭</button>
+  </div>
+</div>
+
+<div id="zoom-wrap">
+  <button id="zoom-x" onclick="closeZoom()">✕</button>
+  <canvas id="zoom-canvas"></canvas>
+</div>
+
+<script src="jquery.js"></script>
+<script src="turn.js"></script>
+<script src="pdf.min.js"></script>
+<script>
+const WORKER_URL = 'pdf.worker.min.js';
+
+let pdfDoc=null, totalPages=0;
+let BOOK_W=0, BOOK_H=0, PAGE_W=0, PAGE_H=0;
+let renderQueue=[], rendering=false;
+
+// ── Auto-load PDF from ?pdf=filename หรือ ?pdf=URL ───────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const params  = new URLSearchParams(location.search);
+  const pdfParam = params.get('pdf');
+  if(pdfParam){
+    loadPDFFromURL(pdfParam);
+  }
+});
+
+async function loadPDFFromURL(url){
+  show('progress'); setProgress('กำลังโหลด PDF…', 10);
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(WORKER_URL, document.baseURI).href;
+  }
+  const task = pdfjsLib.getDocument({ url });
+  task.onProgress = p => { if(p.total) setProgress('โหลด PDF…', 10 + (p.loaded/p.total)*65); };
+  pdfDoc     = await task.promise;
+  totalPages = pdfDoc.numPages;
+  setProgress('เตรียมหน้า…', 80);
+  await calcSize();
+  buildFlipbook();
+  show('viewer');
+  renderBatch(1, 4);
+}
+
+// ── File inputs ──────────────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e=>{ if(e.target.files[0]) loadPDF(e.target.files[0]); });
+document.getElementById('hdr-file').addEventListener('change',  e=>{ if(e.target.files[0]) loadPDF(e.target.files[0]); });
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover',  e=>{ e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('over'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) loadPDF(f); });
+
+// ── Load PDF ─────────────────────────────────────────────────────────────────
+let objectURL = null;
+
+async function loadPDF(file){
+  if(!file.name.toLowerCase().endsWith('.pdf')){ alert('กรุณาเลือกไฟล์ .pdf'); return; }
+  show('progress'); setProgress('กำลังเปิด PDF…', 10);
+
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(WORKER_URL, document.baseURI).href;
+  }
+  if(objectURL){ URL.revokeObjectURL(objectURL); }
+  objectURL = URL.createObjectURL(file);
+
+  setProgress('วิเคราะห์ PDF…', 30);
+  const task = pdfjsLib.getDocument({ url: objectURL });
+  task.onProgress = p => { if(p.total) setProgress('โหลด PDF…', 30 + (p.loaded/p.total)*40); };
+  pdfDoc     = await task.promise;
+  totalPages = pdfDoc.numPages;
+
+  setProgress('เตรียมหน้า…', 75);
+  await calcSize();
+
+  // สร้าง flipbook แสดงทันที (ทุกหน้าเป็น spinner ก่อน)
+  buildFlipbook();
+  show('viewer');
+
+  // โหลด 4 หน้าแรก (ปก + 3 หน้าถัดไป) ก่อนเลย
+  renderBatch(1, 4);
+}
+
+// ── Sizing ────────────────────────────────────────────────────────────────────
+async function calcSize(){
+  const page = await pdfDoc.getPage(1);
+  const vp   = page.getViewport({scale:1});
+  const vw   = Math.min(window.innerWidth - 20, 1280);
+  const vh   = window.innerHeight - 160;
+  const ratio = vp.height / vp.width;
+  PAGE_W = Math.round(Math.min(vw * 0.44, vh / ratio, 560));
+  PAGE_H = Math.round(PAGE_W * ratio);
+  BOOK_W = PAGE_W * 2;
+  BOOK_H = PAGE_H;
+}
+
+// ── Build flipbook ────────────────────────────────────────────────────────────
+// Layout: PDF page 1 = ปก (แสดงหน้าเดียวด้านขวา)
+//         PDF pages 2+ = spreads คู่กัน (2-3, 4-5, ...)
+function buildFlipbook(){
+  const fb = $('#flipbook');
+  if(fb.data('turn')){ try{ fb.turn('destroy'); }catch(e){} }
+  fb.empty();
+
+  for(let i = 1; i <= totalPages; i++){
+    // หน้าแรก = ปก (class "cover-page" สำหรับ styling พิเศษ)
+    const cls = i === 1 ? 'page cover-page' : 'page';
+    fb.append(`<div id="pslot-${i}" class="${cls}"><div class="spin"></div><span class="pnum">${i}</span></div>`);
+  }
+
+  fb.turn({
+    width:      BOOK_W,
+    height:     BOOK_H,
+    autoCenter: true,
+    gradients:  true,
+    elevation:  50,
+    when: {
+      turning: function(e, page){
+        updateUI(page);
+        // โหลดล่วงหน้า 4 หน้าถัดไปจากหน้าปัจจุบัน
+        renderBatch(page + 1, 4);
+      },
+      turned: function(e, page){
+        updateUI(page);
+      }
+    }
+  });
+
+  $(window).off('resize.fb').on('resize.fb', debounce(rebuildOnResize, 380));
+  updateUI(1);
+  setupZoom();
+}
+
+// ── Batch render: โหลดทีละ 4 หน้า ────────────────────────────────────────────
+// ใส่ priority queue เพื่อให้หน้าที่ใกล้กับ current มาก่อน
+function renderBatch(from, count = 4){
+  for(let i = from; i < from + count && i <= totalPages; i++){
+    enqueuePriority(i);
+  }
+  processQueue();
+}
+
+// ── Render queue ──────────────────────────────────────────────────────────────
+function enqueuePriority(n){
+  if(n < 1 || n > totalPages) return;
+  const slot = document.getElementById(`pslot-${n}`);
+  if(!slot || slot.dataset.rendered || renderQueue.includes(n)) return;
+  renderQueue.unshift(n); // หน้า priority อยู่หน้า queue
+}
+
+function enqueueLow(n){
+  if(n < 1 || n > totalPages) return;
+  const slot = document.getElementById(`pslot-${n}`);
+  if(!slot || slot.dataset.rendered || renderQueue.includes(n)) return;
+  renderQueue.push(n);
+}
+
+async function processQueue(){
+  if(rendering) return;
+  rendering = true;
+  while(renderQueue.length > 0){
+    const n = renderQueue.shift();
+    const slot = document.getElementById(`pslot-${n}`);
+    if(!slot || slot.dataset.rendered) continue;
+    await doRender(n, slot);
+  }
+  rendering = false;
+  // เมื่อ priority queue หมดแล้ว ค่อยๆ render ที่เหลือใน background
+  setTimeout(bgRender, 300);
+}
+
+async function doRender(n, slot){
+  try {
+    const page  = await pdfDoc.getPage(n);
+    const dpr   = Math.min(window.devicePixelRatio || 1, 1.5);
+    const scale = (PAGE_W / page.getViewport({scale:1}).width) * dpr;
+    const vp    = page.getViewport({scale});
+    const cv    = document.createElement('canvas');
+    cv.width    = Math.round(vp.width);
+    cv.height   = Math.round(vp.height);
+    await page.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+    slot.innerHTML = '';
+    slot.appendChild(cv);
+    slot.insertAdjacentHTML('beforeend', `<span class="pnum">${n}</span>`);
+    slot.dataset.rendered = '1';
+  } catch(e) {
+    slot.innerHTML = `<span style="font-size:.7rem;opacity:.4;color:#333">หน้า ${n}</span>`;
+    slot.dataset.rendered = 'err';
+  }
+}
+
+// Background render ไล่หน้าที่เหลือทีละหน้า
+let bgIdx = 1;
+function bgRender(){
+  while(bgIdx <= totalPages){
+    const n = bgIdx++;
+    const slot = document.getElementById(`pslot-${n}`);
+    if(slot && !slot.dataset.rendered && !renderQueue.includes(n)){
+      enqueueLow(n);
+      processQueue();
+      return;
+    }
+  }
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function gotoPage(target){
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  const total = fb.turn('pages');
+  const p = target >= 9999 ? total : Math.max(1, target);
+  fb.turn('page', p);
+  renderBatch(p, 4);
+}
+
+function updateUI(page){
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  const total = fb.turn('pages');
+  // แปลง turn.js page → PDF page number
+  document.getElementById('pg-info').textContent = `หน้า ${page} / ${total}`;
+  document.getElementById('btn-prev').disabled  = page <= 1;
+  document.getElementById('btn-first').disabled = page <= 1;
+  document.getElementById('btn-next').disabled  = page >= total;
+  document.getElementById('btn-last').disabled  = page >= total;
+}
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  const fb = $('#flipbook');
+  if(!fb.data || !fb.data('turn')) return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){ e.preventDefault(); fb.turn('next'); }
+  if(e.key==='ArrowLeft' ||e.key==='PageUp')  { e.preventDefault(); fb.turn('previous'); }
+  if(e.key==='Home'){ e.preventDefault(); fb.turn('page',1); }
+  if(e.key==='End') { e.preventDefault(); fb.turn('page', fb.turn('pages')); }
+});
+
+// Touch
+(function(){
+  let x0=null;
+  document.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(x0===null) return;
+    const dx=e.changedTouches[0].clientX - x0;
+    const fb=$('#flipbook');
+    if(!fb.data||!fb.data('turn')){ x0=null; return; }
+    if(dx < -50) fb.turn('next');
+    else if(dx > 50) fb.turn('previous');
+    x0=null;
+  },{passive:true});
+})();
+
+// ── Zoom on double-click ─────────────────────────────────────────────────────
+function setupZoom(){
+  $('#book-wrap').off('dblclick').on('dblclick', async function(e){
+    const fb = $('#flipbook');
+    if(!fb.data('turn')) return;
+    const page = fb.turn('page');
+    const rect = document.getElementById('flipbook').getBoundingClientRect();
+    const side = (e.clientX - rect.left) < BOOK_W/2 ? 'left' : 'right';
+    let pdfPage = side==='right' ? (page - 1) : (page - 2);
+    pdfPage = Math.max(1, Math.min(pdfPage, totalPages));
+
+    // Render high-res version for zoom
+    const hPage  = await pdfDoc.getPage(pdfPage);
+    const hScale = (PAGE_W * 2.5) / hPage.getViewport({scale:1}).width;
+    const hVp    = hPage.getViewport({scale: hScale});
+    const zc     = document.getElementById('zoom-canvas');
+    zc.width  = Math.round(hVp.width);
+    zc.height = Math.round(hVp.height);
+    await hPage.render({canvasContext: zc.getContext('2d'), viewport: hVp}).promise;
+    document.getElementById('zoom-wrap').classList.add('show');
+  });
+}
+function closeZoom(){ document.getElementById('zoom-wrap').classList.remove('show'); }
+document.getElementById('zoom-wrap').addEventListener('click', e=>{ if(e.target.id==='zoom-wrap') closeZoom(); });
+
+// ── Resize ───────────────────────────────────────────────────────────────────
+async function rebuildOnResize(){
+  if(!pdfDoc) return;
+  renderQueue = []; bgIdx = 1;
+  await calcSize();
+  buildFlipbook();
+  renderBatch(1, 4);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function show(s){
+  document.getElementById('screen-upload').style.display    = s==='upload'   ? 'flex' : 'none';
+  document.getElementById('screen-progress').style.display  = s==='progress' ? 'flex' : 'none';
+  document.getElementById('screen-viewer').style.display    = s==='viewer'   ? 'flex' : 'none';
+}
+function setProgress(msg, pct){
+  document.getElementById('prog-label').textContent = msg;
+  document.getElementById('prog-bar').style.width   = ~~pct + '%';
+}
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+</script>
+</body>
+</html>
