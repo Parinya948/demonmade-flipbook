@@ -113,9 +113,11 @@ header {
   display: flex; align-items: center; justify-content: center;
   width: 100%;
   padding: 16px;
-  cursor: pointer; /* hint ให้ผู้ใช้รู้ว่าคลิกได้ */
+  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  perspective: 1800px;        /* depth field สำหรับ 3D */
+  perspective-origin: 50% 50%;
 }
 
 #book-frame {
@@ -126,9 +128,16 @@ header {
   transform-style: preserve-3d;
   box-shadow:
     0 0 0 1px rgba(0,0,0,.8),
-    0 16px 60px rgba(0,0,0,.95),
-    0 0 100px rgba(201,169,110,.04),
-    inset 0 1px 0 rgba(255,255,255,.03);
+    0 24px 80px rgba(0,0,0,.98),
+    0 8px 30px rgba(0,0,0,.8),
+    0 0 120px rgba(201,169,110,.06),
+    inset 0 1px 0 rgba(255,255,255,.04);
+  /* subtle 3D tilt — ดูมีความลึกตลอดเวลา */
+  transform: rotateX(2deg);
+  transition: transform .3s ease;
+}
+#book-frame:hover {
+  transform: rotateX(1deg);
 }
 #book-frame::before, #book-frame::after {
   content: ''; position: absolute;
@@ -335,7 +344,7 @@ function buildFlipbook() {
     display:     isMobile() ? 'single' : 'double',
     autoCenter:  true,
     gradients:   true,
-    elevation:   50,
+    elevation:   150,                       // เงา 3D ลึกขึ้น
     cornerSize:  Math.max(PAGE_W, PAGE_H), // ทั้งหน้าเป็น fold zone
     turnCorners: 'tl,tr,bl,br',
     when: {
@@ -391,12 +400,15 @@ function updateUI(page) {
   document.getElementById('btn-last').disabled  = page >= total;
 }
 
-// ── Click / tap anywhere on book to flip ─────────────────────────────────────
-// turn.js จัดการ drag/fold ทั้งหน้าเองแล้ว (cornerSize = full page)
-// เราดูแลแค่ "แตะโดยไม่ขยับ" = click → เปลี่ยนหน้า
+// ── Tap + Swipe → flip page ───────────────────────────────────────────────────
+// turn.js จัดการ drag-fold เอง (cornerSize = full page)
+// handler นี้ดูแล: (1) tap = click เปลี่ยนหน้า  (2) swipe ซ้าย/ขวา เปลี่ยนหน้า
 (function () {
-  const CLICK_MAX = 10; // px — ถ้าขยับเกินนี้ถือว่า drag ให้ turn.js จัดการ
-  let startX = null, startY = null;
+  const SWIPE_MIN   = 40;  // px — ขยับแนวนอนเกินนี้ = swipe
+  const CLICK_MAX   = 10;  // px — ขยับน้อยกว่านี้   = tap/click
+  const SWIPE_RATIO = 1.2; // |dx| ต้องมากกว่า |dy| * ratio เพื่อกัน scroll แนวตั้ง
+
+  let startX = null, startY = null, swiped = false;
 
   function isOnBook(x, y) {
     const el = document.getElementById('flipbook');
@@ -407,27 +419,44 @@ function updateUI(page) {
 
   function onStart(x, y) {
     if (!isOnBook(x, y)) return;
-    startX = x; startY = y;
+    startX = x; startY = y; swiped = false;
+  }
+
+  // ระหว่างลาก — ตรวจ swipe ก่อนที่ touchend จะมา
+  function onMove(x, y) {
+    if (startX === null || swiped) return;
+    const dx = x - startX, dy = y - startY;
+    if (Math.abs(dx) >= SWIPE_MIN && Math.abs(dx) > Math.abs(dy) * SWIPE_RATIO) {
+      swiped = true;
+      dx < 0 ? flipNext() : flipPrev();
+    }
   }
 
   function onEnd(x, y) {
     if (startX === null) return;
-    const dist = Math.hypot(x - startX, y - startY);
+    const dx = x - startX, dy = y - startY;
+    const dist = Math.hypot(dx, dy);
     startX = null; startY = null;
-    if (dist > CLICK_MAX) return; // drag → turn.js จัดการแล้ว ไม่ต้องทำอะไร
 
-    // แตะ = click → ซ้ายครึ่ง=prev, ขวาครึ่ง=next
-    const r = document.getElementById('flipbook').getBoundingClientRect();
-    x < r.left + r.width / 2 ? flipPrev() : flipNext();
+    if (swiped) return; // swipe handled in onMove
+
+    // tap (ขยับน้อย)
+    if (dist <= CLICK_MAX) {
+      const r = document.getElementById('flipbook').getBoundingClientRect();
+      x < r.left + r.width / 2 ? flipPrev() : flipNext();
+    }
+    // drag ขนาดกลาง-ใหญ่ → turn.js จัดการ fold อยู่แล้ว ไม่ต้องทำอะไร
   }
 
   // Touch
   document.addEventListener('touchstart', e => onStart(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX,  e.touches[0].clientY), { passive: true });
   document.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY), { passive: true });
 
   // Mouse
   document.addEventListener('mousedown', e => onStart(e.clientX, e.clientY), true);
-  document.addEventListener('mouseup',   e => onEnd(e.clientX, e.clientY),   true);
+  document.addEventListener('mousemove', e => onMove(e.clientX,  e.clientY),  true);
+  document.addEventListener('mouseup',   e => onEnd(e.clientX,   e.clientY),  true);
 })();
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
