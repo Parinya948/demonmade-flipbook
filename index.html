@@ -348,9 +348,7 @@ function buildFlipbook() {
     }
   });
 
-  // ปิด turn.js built-in drag/touch handler — เราใช้ overlay แทน
-  try { fb.turn('disable', true); } catch(e) {}
-
+  // overlay คลุมทับอยู่แล้ว — ไม่ต้อง disable turn.js (ไม่งั้น animation ไม่ทำงาน)
   $(window).off('resize.fb').on('resize.fb', debounce(rebuildOnResize, 350));
   setTimeout(() => updateUI(fb.turn('page') || 1), 50);
   setupZoom();
