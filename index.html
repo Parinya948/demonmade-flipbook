@@ -186,17 +186,9 @@ header {
   background: linear-gradient(90deg, rgba(201,169,110,.25), rgba(201,169,110,.0));
 }
 
-/* shadow ระหว่างหน้า (spine) */
-#flipbook .shadow {
-  background: linear-gradient(
-    90deg,
-    rgba(0,0,0,0) 0%,
-    rgba(0,0,0,.18) 45%,
-    rgba(201,169,110,.04) 50%,
-    rgba(0,0,0,.18) 55%,
-    rgba(0,0,0,0) 100%
-  ) !important;
-}
+/* turn.js fold layers ต้องออกนอกขอบได้ แต่ shadow ต้อง clip ไม่งั้นค้าง */
+#flipbook > .turn-page-wrapper { overflow: visible !important; }
+#flipbook > .shadow { overflow: hidden; }
 
 /* turn.js fold layers ต้องออกนอกขอบได้ */
 #flipbook .turn-page-wrapper,
@@ -244,15 +236,22 @@ header {
 .ctrl:hover:not(:disabled) { background: rgba(201,169,110,.07); color: var(--gold-light); }
 .ctrl:disabled { opacity: .15; cursor: default; }
 
-/* ปุ่ม icon (|◀ ▶|) */
+/* ปุ่ม icon («« / »») */
 .ctrl-icon {
   background: transparent; border: none;
   color: rgba(201,169,110,.55);
   padding: 0 14px; min-height: 56px;
-  font-size: 1.05rem; line-height: 1;
   cursor: pointer; flex-shrink: 0;
   transition: color .15s;
   display: flex; align-items: center;
+}
+.ctrl-icon span {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: .85rem; font-weight: 600;
+  letter-spacing: -1px;
+  /* บังคับ text mode ป้องกัน iOS render เป็น emoji สี */
+  font-variant-emoji: text;
+  -webkit-text-stroke: 0;
 }
 .ctrl-icon:hover:not(:disabled) { color: var(--gold-light); }
 .ctrl-icon:disabled { opacity: .15; cursor: default; }
@@ -314,11 +313,11 @@ header {
   </div>
 
   <div id="controls">
-    <button class="ctrl-icon" id="btn-first" onclick="gotoPage(1)"    title="หน้าแรก">&#x23EE;</button>
+    <button class="ctrl-icon" id="btn-first" onclick="gotoPage(1)"    title="หน้าแรก"><span>&#xAB;&#xAB;</span></button>
     <button class="ctrl"      id="btn-prev"  onclick="flipPrev()">&#8592; Prev</button>
     <span id="pg-info">— / —</span>
     <button class="ctrl"      id="btn-next"  onclick="flipNext()">Next &#8594;</button>
-    <button class="ctrl-icon" id="btn-last"  onclick="gotoPage(9999)" title="หน้าสุดท้าย">&#x23ED;</button>
+    <button class="ctrl-icon" id="btn-last"  onclick="gotoPage(9999)" title="หน้าสุดท้าย"><span>&#xBB;&#xBB;</span></button>
   </div>
 </div>
 
