@@ -363,25 +363,34 @@ function buildFlipbook() {
   });
 
   $(window).off('resize.fb').on('resize.fb', debounce(rebuildOnResize, 350));
-  updateUI(1);
+  // รอให้ turn.js init เสร็จก่อนค่อย update UI
+  setTimeout(() => updateUI(fb.turn('page') || 1), 50);
   setupZoom();
 }
 
 // ── Navigation ────────────────────────────────────────────────────────────────
-function flipNext()     { $('#flipbook').turn('next'); }
-function flipPrev()     { $('#flipbook').turn('previous'); }
+function flipNext() {
+  try { $('#flipbook').turn('next'); } catch(e) {}
+}
+function flipPrev() {
+  try { $('#flipbook').turn('previous'); } catch(e) {}
+}
 function gotoPage(p) {
-  const fb = $('#flipbook');
-  if (!fb.data('turn')) return;
-  const total = fb.turn('pages');
-  fb.turn('page', p >= 9999 ? total : Math.max(1, p));
+  try {
+    const fb = $('#flipbook');
+    const total = fb.turn('pages');
+    fb.turn('page', p >= 9999 ? total : Math.max(1, p));
+  } catch(e) {}
 }
 
 // ── Update UI (page number + button states) ───────────────────────────────────
 function updateUI(page) {
-  const fb = $('#flipbook');
-  if (!fb.data || !fb.data('turn')) return;
-  const total = fb.turn('pages');
+  let total = 0;
+  try {
+    const fb = $('#flipbook');
+    total = fb.turn('pages');
+  } catch(e) { return; }
+  if (!total) return;
 
   // แสดงเลขหน้า
   let txt;
